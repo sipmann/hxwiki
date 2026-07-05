@@ -2,7 +2,7 @@
 ;;;
 ;;; Installable with Steel's package manager:
 ;;;
-;;;   forge pkg install --git https://github.com/<your-username>/hxwiki
+;;;   forge pkg install --git https://github.com/sipmann/hxwiki
 ;;;
 ;;; then, in ~/.config/helix/init.scm:
 ;;;

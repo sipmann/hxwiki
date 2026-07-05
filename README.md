@@ -59,7 +59,7 @@ Helix (Helix does not have a stable plugin API yet). Tested on Windows only so f
 With [forge](https://github.com/mattwparas/steel), Steel's package manager:
 
 ```sh
-forge pkg install --git https://github.com/<your-username>/hxwiki
+forge pkg install --git https://github.com/sipmann/hxwiki
 ```
 
 Then, in your `~/.config/helix/init.scm`:
