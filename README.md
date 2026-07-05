@@ -122,3 +122,12 @@ These are merged onto Helix's default keymap (via `add-global-keybinding` /
 - Structure cross-checked against real third-party Steel plugins:
   [waddie/nrepl.hx](https://github.com/waddie/nrepl.hx) and
   [waddie/http.hx](https://github.com/waddie/http.hx).
+
+## License
+
+AGPL-3.0-or-later
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU Affero General Public License as published by the Free Software Foundation, either version 3
+of the License, or (at your option) any later version. See [LICENSE](./LICENSE) for the full
+text.
