@@ -15,7 +15,10 @@ Helix (Helix does not have a stable plugin API yet). Tested on Windows only so f
 
 - `[[link]]` following: put the cursor inside a `[[...]]` span and hit `Enter` (normal mode, in
   `.md` files) to open the target note, creating it if it doesn't exist yet — including
-  subdirectories, e.g. `[[projects/foo]]` -> `<vault>/projects/foo.md`.
+  subdirectories, e.g. `[[projects/foo]]`. Links are resolved relative to the *current* note's
+  directory (VimWiki's default), so `[[foo]]` written inside `<vault>/projects/bar.md` opens
+  `<vault>/projects/foo.md`, not `<vault>/foo.md`. Prefix a link with `/` to anchor it to the
+  vault root instead, e.g. `[[/index]]` always opens `<vault>/index.md`.
 - Daily diary: one command opens/creates today's entry, organized as `diary/YYYY/MM/DD.md`.
 - Wiki index: one command opens the vault's `index.md`.
 - Configurable vault root (defaults to `~/hxwiki`).

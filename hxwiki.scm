@@ -51,17 +51,29 @@
 (define (current-doc-text)
   (text.rope->string (editor->text (editor->doc-id (editor-focus)))))
 
-;; Ensures the intermediate directories exist (create-directory! is not recursive)
-(define (ensure-parent-dir! relative-path)
-  (define segments (split-many relative-path "/"))
-  (define dirs (reverse (cdr (reverse segments))))
-  (let loop ([acc *wiki-root*]
-             [rest dirs])
-    (unless (null? rest)
-      (define next (string-append acc "/" (car rest)))
-      (unless (path-exists? next)
-        (create-directory! next))
-      (loop next (cdr rest)))))
+(define (current-doc-path)
+  (editor-document->path (editor->doc-id (editor-focus))))
+
+;; Returns the parent directory of `path` (the portion before the last "/" or
+;; "\\"), or #f if `path` has no directory separator.
+(define (path-parent path)
+  (define len (string-length path))
+  (let loop ([i (- len 1)])
+    (cond
+      [(< i 0) #f]
+      [(or (char=? (string-ref path i) #\/) (char=? (string-ref path i) #\\))
+       (substring path 0 i)]
+      [else (loop (- i 1))])))
+
+;; Recursively creates the ancestor directories of `path` (an absolute file
+;; or directory path), stopping once an existing ancestor is found.
+;; create-directory! is not recursive, so this walks top-down once the first
+;; existing ancestor has been located.
+(define (ensure-parent-dir! path)
+  (define dir (path-parent path))
+  (when (and dir (not (path-exists? dir)))
+    (ensure-parent-dir! dir)
+    (create-directory! dir)))
 
 ;; Finds the index (within `text`) of the "]]" closer, starting the search at `i`.
 ;; Returns the position of the pair's first "]", or #f if none is found.
@@ -93,8 +105,18 @@
 (define (link-name->relative-path name)
   (if (ends-with? name ".md") name (string-append name ".md")))
 
+;; Resolves a [[link]] name to an absolute file path. A name starting with
+;; "/" is anchored to the wiki root (VimWiki's root-relative link syntax);
+;; any other name is resolved relative to the current note's directory,
+;; matching VimWiki's default link resolution, so [[foo]] written in
+;; <root>/projects/bar.md opens <root>/projects/foo.md rather than
+;; <root>/foo.md.
 (define (link-name->path name)
-  (string-append *wiki-root* "/" (link-name->relative-path name)))
+  (define rel (link-name->relative-path name))
+  (if (starts-with? rel "/")
+      (string-append *wiki-root* rel)
+      (let ([base (or (path-parent (current-doc-path)) *wiki-root*)])
+        (string-append base "/" rel))))
 
 ;; --- commands ---
 
@@ -111,7 +133,7 @@
   (define rel (string-append "diary/" date-path ".md"))
   (define full (string-append *wiki-root* "/" rel))
   (define is-new (not (path-exists? full)))
-  (ensure-parent-dir! rel)
+  (ensure-parent-dir! full)
   (helix.open full)
   (when is-new
     (helix.static.insert_string (string-append "# " date "\n\n"))))
@@ -124,7 +146,7 @@
   (define pos (cursor-position))
   (define name (find-link-at text pos))
   (if name
-      (begin
-        (ensure-parent-dir! (link-name->relative-path name))
-        (helix.open (link-name->path name)))
+      (let ([target (link-name->path name)])
+        (ensure-parent-dir! target)
+        (helix.open target))
       (set-status! "No [[link]] under the cursor")))
