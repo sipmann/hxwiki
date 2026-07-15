@@ -30,10 +30,17 @@
          rewrite-links-in-text
          update-links-in-vault!)
 
-;; Expands a leading "~" to the user's home directory (USERPROFILE)
+;; The home directory env var differs by OS (Windows: USERPROFILE, POSIX:
+;; HOME); env-var raises if the var isn't set, so picking the wrong one
+;; would crash on any non-Windows steel process, e.g. `steel < tests/*.scm`
+;; in CI.
+(define (home-dir)
+  (if (equal? (current-os!) "windows") (env-var "USERPROFILE") (env-var "HOME")))
+
+;; Expands a leading "~" to the user's home directory
 (define (expand-user path)
   (if (starts-with? path "~")
-      (string-append (env-var "USERPROFILE") (substring path 1 (string-length path)))
+      (string-append (home-dir) (substring path 1 (string-length path)))
       path))
 
 (define *wiki-root* (expand-user "~/hxwiki"))

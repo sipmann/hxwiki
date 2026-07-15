@@ -60,16 +60,22 @@
 
 ;;@doc
 ;; Prints the suite verdict; see the file header for why run-all.sh greps
-;; for this instead of checking the process exit code.
+;; for this instead of checking the process exit code. A suite that recorded
+;; zero checks counts as a failure too -- otherwise an error early in the
+;; file (e.g. a broken `require`) that stops every check from ever running
+;; would still print SUITE-PASS, since 0 failures out of 0 checks is
+;; vacuously "clean".
 (define (summarize! name)
   (define f (unbox *failures*))
   (define c (unbox *checks*))
-  (if (= f 0)
-      (displayln (string-append "SUITE-PASS " name " (" (to-string c) " checks)"))
-      (displayln (string-append "SUITE-FAIL "
-                                 name
-                                 ": "
-                                 (to-string f)
-                                 " of "
-                                 (to-string c)
-                                 " checks failed"))))
+  (cond
+    [(= c 0) (displayln (string-append "SUITE-FAIL " name ": 0 checks ran (see errors above)"))]
+    [(= f 0) (displayln (string-append "SUITE-PASS " name " (" (to-string c) " checks)"))]
+    [else
+     (displayln (string-append "SUITE-FAIL "
+                                name
+                                ": "
+                                (to-string f)
+                                " of "
+                                (to-string c)
+                                " checks failed"))]))
