@@ -19,12 +19,20 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: false
-          key: steel-v0.8.2
+          key: steel-dec633b
 
       # hxwiki-core.scm has no Helix dependency, so the test suite only needs
       # the bare `steel` CLI -- not the full steel-event-system Helix build.
+      #
+      # Pinned to the exact commit the steel-event-system Helix fork itself
+      # pins (see its Cargo.lock), not the v0.8.2 tag: that commit is newer
+      # than the tag and is what call-with-output-file's #:exists keyword
+      # (used by hxwiki-core.scm) actually requires -- the tagged release
+      # predates it and fails with an arity mismatch.
       - name: Install steel
-        run: cargo install --git https://github.com/mattwparas/steel steel-interpreter --tag v0.8.2 --locked
+        run: |
+          cargo install --git https://github.com/mattwparas/steel steel-interpreter \
+            --rev dec633b908afeafeaf62bab457a92e2bf873745a --locked
 
       - name: Run tests
         run: sh tests/run-all.sh
