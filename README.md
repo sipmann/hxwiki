@@ -19,6 +19,10 @@ Helix (Helix does not have a stable plugin API yet). Tested on Windows only so f
   directory (VimWiki's default), so `[[foo]]` written inside `<vault>/projects/bar.md` opens
   `<vault>/projects/foo.md`, not `<vault>/foo.md`. Prefix a link with `/` to anchor it to the
   vault root instead, e.g. `[[/index]]` always opens `<vault>/index.md`.
+- Rename-with-link-update: `:hxwiki-rename <new-name>` renames the current note (same `[[link]]`
+  name syntax, so it can also move the note into a different/new subdirectory) and rewrites every
+  `[[link]]` across the whole vault that pointed at it, preserving each link's own style (root- vs
+  directory-relative, and whether it spelled out `.md`).
 - Daily diary: one command opens/creates today's entry, organized as `diary/YYYY/MM/DD.md`.
 - Wiki index: one command opens the vault's `index.md`.
 - Configurable vault root (defaults to `~/hxwiki`).
@@ -84,6 +88,7 @@ path and keybindings — copy the parts you want into your own `init.scm`.
 | `:hxwiki-index`              | Open (or create) the vault's `index.md`                          |
 | `:hxwiki-diary-today`        | Open/create today's diary entry (`diary/YYYY/MM/DD.md`)           |
 | `:hxwiki-follow-or-create`   | Follow the `[[link]]` under the cursor, creating it if needed     |
+| `:hxwiki-rename <new-name>`  | Rename the current note and update `[[links]]` to it vault-wide   |
 
 `set-hxwiki-root!` is a Scheme function (not a typable command), for use in your `init.scm`:
 
@@ -110,11 +115,12 @@ These are merged onto Helix's default keymap (via `add-global-keybinding` /
 - Steel does not currently expose a general-purpose regex library to scripts, so
   `[[link]]` detection is a small hand-written scanner over the whole buffer text rather than a
   regex match.
-- No backlinks, table-of-contents generation, or rename-with-link-update yet. These would be
-  natural follow-ups (backlinks could shell out to `rg` over the vault root; a diary index could
-  use `read-dir`).
+- No backlinks or table-of-contents generation yet. These would be natural follow-ups (backlinks
+  could shell out to `rg` over the vault root; a diary index could use `read-dir`).
 - Link target names are used as-is for the filename (spaces and subdirectories included), matching
   VimWiki's default behavior — no slugification.
+- The buffer for the old path stays open (Helix doesn't know the underlying file moved) after a
+  rename; close it manually (e.g. `:bc`) if it's still around.
 
 ## Credits
 
