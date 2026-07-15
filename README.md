@@ -81,6 +81,37 @@ by path instead, e.g. `(require "E:/projetos_novos/opensource/hxwiki/hxwiki.scm"
 See [`keybindings-example.scm`](./keybindings-example.scm) for a full example wiring up the vault
 path and keybindings — copy the parts you want into your own `init.scm`.
 
+Already running Helix with the plugin `require`d locally? Edit `hxwiki.scm`/`hxwiki-core.scm`,
+then run `:config-reload` inside Helix instead of restarting it — that tears down and rebuilds the
+whole Steel engine, re-running `helix.scm`/`init.scm` (and therefore re-`require`ing the plugin)
+from scratch. Note that only symbols listed in your own `helix.scm`'s `provide` become typable
+`:commands`, so a new command also needs adding there.
+
+## Code layout
+
+The plugin is split across two files:
+
+- `hxwiki-core.scm` — vault path handling, `[[link]]` scanning/resolution, and the
+  rename-with-link-update machinery. Pure Steel with no Helix dependency, so it can be `require`d
+  and exercised directly under a bare `steel` process (see [Tests](#tests) below).
+- `hxwiki.scm` — the thin Helix-facing layer: reads the current buffer/cursor, wires up the
+  `:hxwiki-*` typable commands, and calls into `hxwiki-core.scm` for the actual logic.
+
+## Tests
+
+```sh
+sh tests/run-all.sh
+```
+
+Runs each `tests/test-*.scm` suite under a headless `steel` process (no Helix/`hx` required) and
+reports pass/fail per suite. Individually: `steel < tests/test-rename.scm` (requires are resolved
+relative to the current directory when piping via stdin, so run these from the repo root).
+
+The harness (`tests/harness.scm`) is a minimal homegrown `check-equal!`/`check-true!`/`check-false!`
+setup, not a dependency — `steel` ships one too
+([`cogs/tests/unit-test.scm`](https://github.com/mattwparas/steel/blob/master/cogs/tests/unit-test.scm)),
+worth switching to if this outgrows what a ~60-line harness can do.
+
 ## Commands
 
 | Command                     | Description                                                    |
@@ -131,6 +162,12 @@ These are merged onto Helix's default keymap (via `add-global-keybinding` /
 - Structure cross-checked against real third-party Steel plugins:
   [waddie/nrepl.hx](https://github.com/waddie/nrepl.hx) and
   [waddie/http.hx](https://github.com/waddie/http.hx).
+- `tests/harness.scm` and `tests/run-all.sh` are adapted from
+  [nrepl.hx's own test suite](https://github.com/waddie/nrepl.hx/tree/main/tests) by
+  [Tom Waddington](https://github.com/waddie) (also AGPL-3.0-or-later) — a small
+  `check-equal!`/`summarize!` harness run headlessly via `steel < tests/test-*.scm`, with
+  `run-all.sh` grepping for a `SUITE-PASS`/`SUITE-FAIL` sentinel since the bare `steel` CLI exits 0
+  even on an uncaught error.
 
 ## License
 

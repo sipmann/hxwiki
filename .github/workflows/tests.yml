@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: false
+          key: steel-v0.8.2
+
+      # hxwiki-core.scm has no Helix dependency, so the test suite only needs
+      # the bare `steel` CLI -- not the full steel-event-system Helix build.
+      - name: Install steel
+        run: cargo install --git https://github.com/mattwparas/steel steel-interpreter --tag v0.8.2 --locked
+
+      - name: Run tests
+        run: sh tests/run-all.sh
