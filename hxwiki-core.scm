@@ -12,8 +12,13 @@
 ;;; APIs, so it can be `require`d and exercised directly under a bare `steel`
 ;;; process -- see tests/.
 
+(require-builtin steel/process)
+(require "steel/result")
+
 (provide wiki-root
          set-hxwiki-root!
+         wiki-assets-dir-name
+         set-hxwiki-assets-dir-name!
          path-parent
          ensure-parent-dir!
          scan-links
@@ -28,7 +33,10 @@
          write-string-to-file!
          rewrite-link-name
          rewrite-links-in-text
-         update-links-in-vault!)
+         update-links-in-vault!
+         assets-dir-for
+         unique-path
+         paste-clipboard-image!)
 
 ;; The home directory env var differs by OS (Windows: USERPROFILE, POSIX:
 ;; HOME); env-var raises if the var isn't set, so picking the wrong one
@@ -57,6 +65,17 @@
 ;; set-hxwiki-root! call. A function is immune to this: it's a closure that
 ;; re-reads *wiki-root* from this module's own environment on every call.
 (define (wiki-root) *wiki-root*)
+
+(define *wiki-assets-dir-name* "assets")
+
+;;@doc
+;; Sets the name of the folder that :hxwiki-paste-image creates next to a
+;; note (a sibling of the .md file, not a single vault-wide folder) to save
+;; pasted clipboard images into. Defaults to "assets".
+(define (set-hxwiki-assets-dir-name! name)
+  (set! *wiki-assets-dir-name* name))
+
+(define (wiki-assets-dir-name) *wiki-assets-dir-name*)
 
 ;; --- path helpers ---
 
@@ -277,3 +296,78 @@
           (when rewritten (write-string-to-file! file rewritten))
           (process (cdr files) (if rewritten (+ count 1) count)))))
   (process (list-md-files *wiki-root*) 0))
+
+;; --- clipboard image paste ---
+
+;; The assets directory for the note at `doc-path`: a folder named
+;; (wiki-assets-dir-name) next to it, i.e. inside the note's own directory,
+;; not a single vault-wide folder.
+(define (assets-dir-for doc-path)
+  (string-append (or (path-parent doc-path) *wiki-root*) "/" *wiki-assets-dir-name*))
+
+;; Finds the index of the last "." in `s`, or #f if there is none.
+(define (last-dot-index s)
+  (define len (string-length s))
+  (let loop ([i (- len 1)])
+    (cond
+      [(< i 0) #f]
+      [(char=? (string-ref s i) #\.) i]
+      [else (loop (- i 1))])))
+
+;; If `path` doesn't exist yet, returns it unchanged; otherwise inserts
+;; "-2", "-3", etc. before the extension until it finds one that doesn't --
+;; so two images pasted in the same second (same generated filename) don't
+;; clobber each other.
+(define (unique-path path)
+  (define dot (last-dot-index path))
+  (define stem (if dot (substring path 0 dot) path))
+  (define ext (if dot (substring path dot (string-length path)) ""))
+  (define (candidate-for n) (if (= n 1) path (string-append stem "-" (number->string n) ext)))
+  (let try ([n 1])
+    (define candidate (candidate-for n))
+    (if (path-exists? candidate) (try (+ n 1)) candidate)))
+
+;; Escapes `s` for embedding inside a PowerShell single-quoted string
+;; literal, where a literal "'" is written as "''".
+(define (powershell-quote s)
+  (define len (string-length s))
+  (let loop ([i 0] [acc ""])
+    (if (>= i len)
+        acc
+        (loop (+ i 1)
+              (string-append acc (if (char=? (string-ref s i) #\') "''" (substring s i (+ i 1))))))))
+
+;; Runs a PowerShell one-liner that saves the OS clipboard's image (if any)
+;; to `target-path` as a PNG, and reports what happened via its exit code:
+;; 0 if an image was found and saved, 1 if the clipboard held no image.
+;; Clipboard access needs an STA thread, hence -STA (classic powershell.exe
+;; already defaults to STA, but that's an implementation detail worth
+;; pinning down explicitly rather than depending on).
+(define (windows-paste-clipboard-image! target-path)
+  (define script
+    (string-append "Add-Type -AssemblyName System.Windows.Forms; "
+                    "Add-Type -AssemblyName System.Drawing; "
+                    "if (-not [System.Windows.Forms.Clipboard]::ContainsImage()) { exit 1 }; "
+                    "$img = [System.Windows.Forms.Clipboard]::GetImage(); "
+                    "$img.Save('"
+                    (powershell-quote target-path)
+                    "', [System.Drawing.Imaging.ImageFormat]::Png); "
+                    "exit 0"))
+  (define spawned
+    (spawn-process (command "powershell" (list "-NoProfile" "-NonInteractive" "-STA" "-Command" script))))
+  (if (Err? spawned)
+      'error
+      (let ([exit-code (wait (Ok->value spawned))])
+        (cond
+          [(not (Ok? exit-code)) 'error]
+          [(equal? (Ok->value exit-code) 0) 'ok]
+          [else 'no-image]))))
+
+;;@doc
+;; Saves whatever image is currently on the OS clipboard to `target-path`
+;; (an absolute file path; its parent directory must already exist).
+;; Returns 'ok, 'no-image (nothing image-shaped on the clipboard), or
+;; 'unsupported (no clipboard-image support implemented yet for the
+;; current OS -- only Windows so far).
+(define (paste-clipboard-image! target-path)
+  (if (equal? (current-os!) "windows") (windows-paste-clipboard-image! target-path) 'unsupported))

@@ -17,10 +17,16 @@
 ;; Point this at your own vault. Defaults to "~/hxwiki" if you don't call this.
 (set-hxwiki-root! "~/hxwiki")
 
+;; Name of the per-note folder :hxwiki-paste-image saves clipboard images
+;; into (a sibling of the note, not a single vault-wide folder). Defaults to
+;; "assets" if you don't call this.
+(set-hxwiki-assets-dir-name! "assets")
+
 ;; space w w -> open the wiki index
 ;; space w d -> open/create today's diary entry
+;; space w p -> paste the clipboard image into the current note (Windows only for now)
 (keymap (global)
-  (normal (space (w (w ":hxwiki-index") (d ":hxwiki-diary-today")))))
+  (normal (space (w (w ":hxwiki-index") (d ":hxwiki-diary-today") (p ":hxwiki-paste-image")))))
 
 ;; Enter (normal mode), only in .md files, follows/creates the [[link]] under the cursor
 (define md-keybindings (deep-copy-global-keybindings))

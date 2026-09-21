@@ -37,7 +37,9 @@
          hxwiki-diary-today
          hxwiki-follow-or-create
          hxwiki-rename
-         set-hxwiki-root!)
+         hxwiki-paste-image
+         set-hxwiki-root!
+         set-hxwiki-assets-dir-name!)
 
 ;; --- helpers ---
 
@@ -114,3 +116,27 @@
                                  " ("
                                  (number->string updated)
                                  " note(s) updated)"))]))]))))
+
+;;@doc
+;; Saves the image currently on the OS clipboard into a folder next to the
+;; current note (named by (wiki-assets-dir-name), "assets" by default --
+;; override with set-hxwiki-assets-dir-name!) and inserts a ![](...) link to
+;; it at the cursor. The current buffer must already be a saved note.
+;; Windows only for now.
+(define (hxwiki-paste-image)
+  (define doc-path (current-doc-path))
+  (if (not (and doc-path (is-file? doc-path)))
+      (set-status! "Current buffer is not a saved note")
+      (let* ([dir (assets-dir-for doc-path)]
+             [filename (string-append "paste-" (local-time/now! "%Y%m%d-%H%M%S") ".png")]
+             [target (unique-path (string-append dir "/" filename))])
+        (ensure-parent-dir! target)
+        (let ([result (paste-clipboard-image! target)])
+          (cond
+            [(equal? result 'ok)
+             (helix.static.insert_string
+              (string-append "![](" (wiki-assets-dir-name) "/" (file-name target) ")"))]
+            [(equal? result 'no-image) (set-status! "Clipboard has no image")]
+            [(equal? result 'unsupported)
+             (set-status! "hxwiki-paste-image: only Windows is supported so far")]
+            [else (set-status! "hxwiki-paste-image: failed to run PowerShell")])))))

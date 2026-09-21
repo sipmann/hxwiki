@@ -25,7 +25,12 @@ Helix (Helix does not have a stable plugin API yet). Tested on Windows only so f
   directory-relative, and whether it spelled out `.md`).
 - Daily diary: one command opens/creates today's entry, organized as `diary/YYYY/MM/DD.md`.
 - Wiki index: one command opens the vault's `index.md`.
+- Paste-image: `:hxwiki-paste-image` saves whatever image is on the OS clipboard into a folder
+  next to the current note (a sibling of the `.md` file, not a single vault-wide folder) and
+  inserts a `![](...)` link to it at the cursor. The folder's name is configurable (defaults to
+  `assets`). **Windows only for now** — it shells out to PowerShell to read the clipboard.
 - Configurable vault root (defaults to `~/hxwiki`).
+- Configurable paste-image folder name (defaults to `assets`).
 - "Back" navigation is Helix's native jumplist (`Ctrl-o` / `Ctrl-i`) — nothing to configure.
 
 ## Requirements
